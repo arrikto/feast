@@ -1,0 +1,143 @@
+syntax = "proto3";
+
+package api;
+option go_package = "github.com/feast-dev/feast/backend/api/go_client";
+
+import "Feature.proto";
+import "ValueType.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  responses: {
+    key: "default";
+    value: {
+      schema: {
+        json_schema: {
+          ref: ".api.Status";
+        }
+      }
+    }
+  }
+  // Use bearer token for authorizing access to on demand feature view service.
+  security_definitions: {
+    security: {
+      key: "Bearer";
+      value: {
+        type: TYPE_API_KEY;
+        in: IN_HEADER;
+        name: "authorization";
+      }
+    }
+  }
+  security: {
+    security_requirement: {
+      key: "Bearer";
+      value: {};
+    }
+  }
+};
+
+service OnDemandFeatureViewService {
+  rpc CreateOnDemandFeatureView (CreateOnDemandFeatureViewRequest) returns (OnDemandFeatureView) {
+    option (google.api.http) = {
+      post: "/CreateOnDemandFeatureView",
+      body: "on_demand_feature_view"
+    };
+  }
+
+  rpc GetOnDemandFeatureView (GetOnDemandFeatureViewRequest) returns (OnDemandFeatureView) {
+    option (google.api.http) = {
+      get: "/GetOnDemandFeatureView"
+    };
+  }
+
+  rpc UpdateOnDemandFeatureView (UpdateOnDemandFeatureViewRequest) returns (OnDemandFeatureView) {
+    option (google.api.http) = {
+      post: "/UpdateOnDemandFeatureView",
+      body: "on_demand_feature_view"
+    };
+  }
+
+  rpc DeleteOnDemandFeatureView (DeleteOnDemandFeatureViewRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/DeleteOnDemandFeatureView"
+    };
+  }
+
+  rpc ListOnDemandFeatureViews (ListOnDemandFeatureViewsRequest) returns (ListOnDemandFeatureViewsResponse) {
+    option (google.api.http) = {
+      get: "/ListOnDemandFeatureViews"
+    };
+  }
+}
+
+message CreateOnDemandFeatureViewRequest {
+  OnDemandFeatureView on_demand_feature_view = 1;
+}
+
+message GetOnDemandFeatureViewRequest {
+  string name = 1;
+  string project = 2;
+}
+
+message UpdateOnDemandFeatureViewRequest {
+  OnDemandFeatureView on_demand_feature_view = 1;
+}
+
+message DeleteOnDemandFeatureViewRequest {
+  string name = 1;
+  string project = 2;
+}
+
+message ListOnDemandFeatureViewsRequest {
+  string project = 1;
+}
+
+message ListOnDemandFeatureViewsResponse {
+  repeated OnDemandFeatureView on_demand_feature_views = 1;
+}
+
+message OnDemandFeatureView {
+  // Name of the on demand feature view. Must be unique. Not updated.
+  string name = 1;
+
+  // Name of Feast project that this on demand feature view belongs to.
+  string project = 2;
+
+  // List of features specifications for each feature defined with this on demand feature view.
+  repeated Feature features = 3;
+
+  // Map of sources for this on demand feature view.
+  // Sources are transformed from Protobuf objects to JSON strings.
+  map<string, string> sources = 4;
+
+  // User defined function.
+  UserDefinedFunction user_defined_function = 5;
+
+  // Description of the on demand feature view.
+  string description = 6;
+
+  // User defined metadata.
+  map<string,string> tags = 7;
+
+  // Owner of the on demand feature view.
+  string owner = 8;
+
+  // Creation time of the on demand feature view.
+  google.protobuf.Timestamp created_timestamp = 9;
+
+  // Last update time of the on demand feature view.
+  google.protobuf.Timestamp last_updated_timestamp = 10;
+}
+
+// Serialized representation of Python function.
+message UserDefinedFunction {
+  // The function name.
+  string name = 1;
+
+  // The Python-syntax function body (serialized by dill).
+  bytes body = 2;
+}

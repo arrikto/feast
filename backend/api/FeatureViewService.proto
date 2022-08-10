@@ -1,0 +1,168 @@
+syntax = "proto3";
+
+package api;
+option go_package = "github.com/feast-dev/feast/backend/api/go_client";
+
+import "Feature.proto";
+import "ValueType.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  responses: {
+    key: "default";
+    value: {
+      schema: {
+        json_schema: {
+          ref: ".api.Status";
+        }
+      }
+    }
+  }
+  // Use bearer token for authorizing access to feature view service.
+  security_definitions: {
+    security: {
+      key: "Bearer";
+      value: {
+        type: TYPE_API_KEY;
+        in: IN_HEADER;
+        name: "authorization";
+      }
+    }
+  }
+  security: {
+    security_requirement: {
+      key: "Bearer";
+      value: {};
+    }
+  }
+};
+
+service FeatureViewService {
+  rpc CreateFeatureView (CreateFeatureViewRequest) returns (FeatureView) {
+    option (google.api.http) = {
+      post: "/CreateFeatureView",
+      body: "feature_view"
+    };
+  }
+
+  rpc GetFeatureView (GetFeatureViewRequest) returns (FeatureView) {
+    option (google.api.http) = {
+      get: "/GetFeatureView"
+    };
+  }
+
+  rpc UpdateFeatureView (UpdateFeatureViewRequest) returns (FeatureView) {
+    option (google.api.http) = {
+      post: "/UpdateFeatureView",
+      body: "feature_view"
+    };
+  }
+
+  rpc DeleteFeatureView (DeleteFeatureViewRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/DeleteFeatureView"
+    };
+  }
+
+  rpc ListFeatureViews (ListFeatureViewsRequest) returns (ListFeatureViewsResponse) {
+    option (google.api.http) = {
+      get: "/ListFeatureViews"
+    };
+  }
+
+  rpc ReportMI (ReportMIRequest) returns (MaterializationInterval) {
+    option (google.api.http) = {
+      post: "/ReportMI",
+      body: "materialization_interval"
+    };
+  }
+}
+
+message CreateFeatureViewRequest {
+  FeatureView feature_view = 1;
+}
+
+message GetFeatureViewRequest {
+  string name = 1;
+  string project = 2;
+}
+
+message UpdateFeatureViewRequest {
+  FeatureView feature_view = 1;
+}
+
+message DeleteFeatureViewRequest {
+  string name = 1;
+  string project = 2;
+}
+
+message ListFeatureViewsRequest {
+  string project = 1;
+}
+
+message ListFeatureViewsResponse {
+  repeated FeatureView feature_views = 1;
+}
+
+message ReportMIRequest {
+  string name = 1;
+  string project = 2;
+  MaterializationInterval materialization_interval = 4;
+}
+
+message FeatureView {
+  // Name of the feature view. Must be unique. Not updated.
+  string name = 1;
+
+  // Name of Feast project that this feature view belongs to.
+  string project = 2;
+
+  // List names of entities to associate with the features defined in this feature view. Not updatable.
+  repeated string entities = 3;
+
+  // List of specifications for each field defined as part of this feature view.
+  repeated Feature features = 4;
+
+  // Description of the feature view.
+  string description = 5;
+
+  // User defined metadata.
+  map<string,string> tags = 6;
+
+  // Owner of the feature view.
+  string owner = 7;
+
+  // Features in this feature view can only be retrieved from online serving younger than ttl.
+  // Ttl is measured as the duration of time between the feature's event timestamp and when the feature is retrieved.
+  // Feature values outside ttl will be returned as unset values and indicated to end user.
+  google.protobuf.Duration ttl = 8;
+
+  // Batch/Offline DataSource where this view can retrieve offline feature data.
+  // Protobuf object transformed to a JSON string.
+  string batch_source = 9;
+  
+  // Streaming DataSource from where this view can consume "online" feature data.
+  // Protobuf object transformed to a JSON string.
+  string stream_source = 10;
+
+  // Whether these features should be served online or not.
+  bool online = 11;
+
+  // Creation time of the feature view.
+  google.protobuf.Timestamp created_timestamp = 12;
+
+  // Last update time of the feature view.
+  google.protobuf.Timestamp last_updated_timestamp = 13;
+
+  // List of pairs (start_time, end_time) for which this feature view has been materialized.
+  repeated MaterializationInterval materialization_intervals = 14;
+}
+
+message MaterializationInterval {
+  google.protobuf.Timestamp start_time = 1;
+  google.protobuf.Timestamp end_time = 2;
+}

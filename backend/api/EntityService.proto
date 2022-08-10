@@ -1,0 +1,129 @@
+syntax = "proto3";
+
+package api;
+option go_package = "github.com/feast-dev/feast/backend/api/go_client";
+
+import "ValueType.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  responses: {
+    key: "default";
+    value: {
+      schema: {
+        json_schema: {
+          ref: ".api.Status";
+        }
+      }
+    }
+  }
+  // Use bearer token for authorizing access to entity service.
+  security_definitions: {
+    security: {
+      key: "Bearer";
+      value: {
+        type: TYPE_API_KEY;
+        in: IN_HEADER;
+        name: "authorization";
+      }
+    }
+  }
+  security: {
+    security_requirement: {
+      key: "Bearer";
+      value: {};
+    }
+  }
+};
+
+service EntityService {
+  rpc CreateEntity (CreateEntityRequest) returns (Entity) {
+    option (google.api.http) = {
+      post: "/CreateEntity",
+      body: "entity"
+    };
+  }
+
+  rpc GetEntity (GetEntityRequest) returns (Entity) {
+    option (google.api.http) = {
+      get: "/GetEntity"
+    };
+  }
+
+  rpc UpdateEntity (UpdateEntityRequest) returns (Entity) {
+    option (google.api.http) = {
+      post: "/UpdateEntity",
+      body: "entity"
+    };
+  }
+
+  rpc DeleteEntity (DeleteEntityRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/DeleteEntity"
+    };
+  }
+
+  rpc ListEntities (ListEntitiesRequest) returns (ListEntitiesResponse) {
+    option (google.api.http) = {
+      get: "/ListEntities"
+    };
+  }
+}
+
+message CreateEntityRequest {
+  Entity entity = 1;
+}
+
+message GetEntityRequest {
+  string name = 1;
+  string project = 2;
+}
+
+message UpdateEntityRequest {
+  Entity entity = 1;
+}
+
+message DeleteEntityRequest {
+  string name = 1;
+  string project = 2;
+}
+
+message ListEntitiesRequest {
+  string project = 1;
+}
+
+message ListEntitiesResponse {
+  repeated Entity entities = 1;
+}
+
+message Entity {
+  // Name of the entity.
+  string name = 1;
+
+  // Name of Feast project that this entity belongs to.
+  string project = 2;
+
+  // Type of the entity.
+  ValueType.Enum value_type = 3;
+
+  // Description of the entity.
+  string description = 4;
+
+  // Join key for the entity (i.e. name of the column the entity maps to).
+  string join_key = 5;
+
+  // User defined metadata.
+  map<string,string> tags = 6;
+
+  // Owner of the entity.
+  string owner = 7;
+
+  // Creation time of the entity.
+  google.protobuf.Timestamp created_timestamp = 8;
+
+  // Last update time of the entity.
+  google.protobuf.Timestamp last_updated_timestamp = 9;
+}

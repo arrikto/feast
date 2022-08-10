@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package api;
+option go_package = "github.com/feast-dev/feast/backend/api/go_client";
+
+import "ValueType.proto";
+
+message Feature {
+  // Name of the feature. Not updatable.
+  string name = 1;
+
+  // Value type of the feature. Not updatable.
+  ValueType.Enum value_type = 2;
+
+  // Tags for user defined metadata on a feature.
+  map<string,string> tags = 3;
+}

@@ -1,0 +1,138 @@
+syntax = "proto3";
+
+package api;
+option go_package = "github.com/feast-dev/feast/backend/api/go_client";
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  responses: {
+    key: "default";
+    value: {
+      schema: {
+        json_schema: {
+          ref: ".api.Status";
+        }
+      }
+    }
+  }
+  // Use bearer token for authorizing access to saved dataset service.
+  security_definitions: {
+    security: {
+      key: "Bearer";
+      value: {
+        type: TYPE_API_KEY;
+        in: IN_HEADER;
+        name: "authorization";
+      }
+    }
+  }
+  security: {
+    security_requirement: {
+      key: "Bearer";
+      value: {};
+    }
+  }
+};
+
+service SavedDatasetService {
+  rpc CreateSavedDataset (CreateSavedDatasetRequest) returns (SavedDataset) {
+    option (google.api.http) = {
+      post: "/CreateSavedDataset",
+      body: "saved_dataset"
+    };
+  }
+
+  rpc GetSavedDataset (GetSavedDatasetRequest) returns (SavedDataset) {
+    option (google.api.http) = {
+      get: "/GetSavedDataset"
+    };
+  }
+
+  rpc UpdateSavedDataset (UpdateSavedDatasetRequest) returns (SavedDataset) {
+    option (google.api.http) = {
+      post: "/UpdateSavedDataset",
+      body: "saved_dataset"
+    };
+  }
+
+  rpc DeleteSavedDataset (DeleteSavedDatasetRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/DeleteSavedDataset"
+    };
+  }
+
+  rpc ListSavedDatasets (ListSavedDatasetsRequest) returns (ListSavedDatasetsResponse) {
+    option (google.api.http) = {
+      get: "/ListSavedDatasets"
+    };
+  }
+}
+
+message CreateSavedDatasetRequest {
+  SavedDataset saved_dataset = 1;
+}
+
+message GetSavedDatasetRequest {
+  string name = 1;
+  string project = 2;
+}
+
+message UpdateSavedDatasetRequest {
+  SavedDataset saved_dataset = 1;
+}
+
+message DeleteSavedDatasetRequest {
+  string name = 1;
+  string project = 2;
+}
+
+message ListSavedDatasetsRequest {
+  string project = 1;
+}
+
+message ListSavedDatasetsResponse {
+  repeated SavedDataset saved_datasets = 1;
+}
+
+message SavedDataset {
+    // Name of the dataset. Must be unique since it's possible to overwrite dataset by name.
+    string name = 1;
+  
+    // Name of Feast project that this dataset belongs to.
+    string project = 2;
+  
+    // List of feature references with format "<view name>:<feature name>".
+    repeated string features = 3;
+  
+    // Entity columns + request columns from all feature views used during retrieval.
+    repeated string join_keys = 4;
+  
+    // Whether full feature names are used in stored data.
+    bool full_feature_names = 5;
+  
+    // Storage location of the saved dataset.
+    // Protobuf object transformed to a JSON string.
+    string storage = 6;
+  
+    // Optional and only populated if generated from a feature service fetch.
+    string feature_service_name = 7;
+  
+    // User defined metadata.
+    map<string, string> tags = 8;
+
+    // Creation time of the saved dataset.
+    google.protobuf.Timestamp created_timestamp = 9;
+
+    // Last update time of the saved dataset.
+    google.protobuf.Timestamp last_updated_timestamp = 10;
+    
+    // Min timestamp in the dataset (needed for retrieval).
+    google.protobuf.Timestamp min_event_timestamp = 11;
+    
+    // Max timestamp in the dataset (needed for retrieval).
+    google.protobuf.Timestamp max_event_timestamp = 12;
+  } 

@@ -1,0 +1,160 @@
+syntax = "proto3";
+
+package api;
+option go_package = "github.com/feast-dev/feast/backend/api/go_client";
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  responses: {
+    key: "default";
+    value: {
+      schema: {
+        json_schema: {
+          ref: ".api.Status";
+        }
+      }
+    }
+  }
+  // Use bearer token for authorizing access to data source service.
+  security_definitions: {
+    security: {
+      key: "Bearer";
+      value: {
+        type: TYPE_API_KEY;
+        in: IN_HEADER;
+        name: "authorization";
+      }
+    }
+  }
+  security: {
+    security_requirement: {
+      key: "Bearer";
+      value: {};
+    }
+  }
+};
+
+service DataSourceService {
+  rpc CreateDataSource (CreateDataSourceRequest) returns (DataSource) {
+    option (google.api.http) = {
+      post: "/CreateDataSource",
+      body: "data_source"
+    };
+  }
+
+  rpc GetDataSource (GetDataSourceRequest) returns (DataSource) {
+    option (google.api.http) = {
+      get: "/GetDataSource"
+    };
+  }
+
+  rpc UpdateDataSource (UpdateDataSourceRequest) returns (DataSource) {
+    option (google.api.http) = {
+      post: "/UpdateDataSource",
+      body: "data_source"
+    };
+  }
+
+  rpc DeleteDataSource (DeleteDataSourceRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/DeleteDataSource"
+    };
+  }
+
+  rpc ListDataSources (ListDataSourcesRequest) returns (ListDataSourcesResponse) {
+    option (google.api.http) = {
+      get: "/ListDataSources"
+    };
+  }
+}
+
+message CreateDataSourceRequest {
+  DataSource data_source = 1;
+}
+
+message GetDataSourceRequest {
+  string name = 1;
+  string project = 2;
+}
+
+message UpdateDataSourceRequest {
+  DataSource data_source = 1;
+}
+
+message DeleteDataSourceRequest {
+  string name = 1;
+  string project = 2;
+}
+
+message ListDataSourcesRequest {
+  string project = 1;
+}
+
+message ListDataSourcesResponse {
+  repeated DataSource data_sources = 1;
+}
+
+message DataSource {
+  // Type of data source.
+  enum SourceType {
+    INVALID = 0;
+    BATCH_FILE = 1;
+    BATCH_SNOWFLAKE = 8;
+    BATCH_BIGQUERY = 2;
+    BATCH_REDSHIFT = 5;
+    STREAM_KAFKA = 3;
+    STREAM_KINESIS = 4;
+    CUSTOM_SOURCE = 6;
+    REQUEST_SOURCE = 7;
+    PUSH_SOURCE = 9;
+    BATCH_TRINO = 10;
+    BATCH_SPARK = 11;
+  }
+
+  // Unique name of data source within the project.
+  string name = 1;
+
+  // Name of Feast project that this data source belongs to.
+  string project = 2;
+
+  // Description of the data source.
+  string description = 3;
+
+  // User defined metadata.
+  map<string, string> tags = 4;
+
+  // Owner of the data source.
+  string owner = 5;
+
+  // Type of the data source.
+  SourceType type = 6;
+
+  // Defines mapping between fields in the sourced data and fields in parent FeatureView.
+  map<string, string> field_mapping = 7;
+
+  // Event timestamp column name.
+  string timestamp_field = 8;
+
+  // Partition column (useful for file sources).
+  string date_partition_column = 9;
+
+  // Creation timestamp column name.
+  string created_timestamp_column = 10;
+
+  // This is an internal field that represents the Python class of the data source object a proto object represents.
+  // This should be set by Feast, and not by users.
+  // The field is used primarily by custom data sources and is mandatory for them to set.
+  // Feast may set it for first party sources as well.
+  string data_source_class_type = 11;
+
+  // Optional batch source for streaming sources for historical features and materialization.
+  // Protobuf object transformed to a JSON string.
+  string batch_source = 12;
+
+  // DataSource options.
+  // Protobuf object transformed to a JSON string.
+  string options = 13;
+}

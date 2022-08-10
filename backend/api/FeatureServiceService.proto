@@ -1,0 +1,147 @@
+syntax = "proto3";
+
+package api;
+option go_package = "github.com/feast-dev/feast/backend/api/go_client";
+
+import "Feature.proto";
+import "ValueType.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  responses: {
+    key: "default";
+    value: {
+      schema: {
+        json_schema: {
+          ref: ".api.Status";
+        }
+      }
+    }
+  }
+  // Use bearer token for authorizing access to feature service service.
+  security_definitions: {
+    security: {
+      key: "Bearer";
+      value: {
+        type: TYPE_API_KEY;
+        in: IN_HEADER;
+        name: "authorization";
+      }
+    }
+  }
+  security: {
+    security_requirement: {
+      key: "Bearer";
+      value: {};
+    }
+  }
+};
+
+service FeatureServiceService {
+  rpc CreateFeatureService (CreateFeatureServiceRequest) returns (FeatureService) {
+    option (google.api.http) = {
+      post: "/CreateFeatureService",
+      body: "feature_service"
+    };
+  }
+
+  rpc GetFeatureService (GetFeatureServiceRequest) returns (FeatureService) {
+    option (google.api.http) = {
+      get: "/GetFeatureService"
+    };
+  }
+
+  rpc UpdateFeatureService (UpdateFeatureServiceRequest) returns (FeatureService) {
+    option (google.api.http) = {
+      post: "/UpdateFeatureService",
+      body: "feature_service"
+    };
+  }
+
+  rpc DeleteFeatureService (DeleteFeatureServiceRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/DeleteFeatureService"
+    };
+  }
+
+  rpc ListFeatureServices (ListFeatureServicesRequest) returns (ListFeatureServicesResponse) {
+    option (google.api.http) = {
+      get: "/ListFeatureServices"
+    };
+  }
+}
+
+message CreateFeatureServiceRequest {
+  FeatureService feature_service = 1;
+}
+
+message GetFeatureServiceRequest {
+  string name = 1;
+  string project = 2;
+}
+
+message UpdateFeatureServiceRequest {
+  FeatureService feature_service = 1;
+}
+
+message DeleteFeatureServiceRequest {
+  string name = 1;
+  string project = 2;
+}
+
+message ListFeatureServicesRequest {
+  string project = 1;
+}
+
+message ListFeatureServicesResponse {
+  repeated FeatureService feature_services = 1;
+}
+
+message FeatureService {
+  // Name of the feature service. Must be unique. Not updated.
+  string name = 1;
+
+  // Name of Feast project that this feature service belongs to.
+  string project = 2;
+
+  // Represents a projection that's to be applied on top of the FeatureView.
+  // Contains data such as the features to use from a FeatureView.
+  repeated FeatureViewProjection features = 3;
+
+  // User defined metadata.
+  map<string,string> tags = 4;
+
+  // Description of the feature service.
+  string description = 5;
+
+  // Owner of the feature service.
+  string owner = 6;
+
+  // (optional) If provided logging will be enabled for this feature service.
+  // Protobuf object transformed to a JSON string.
+  string logging_config = 7;
+
+  // Creation time of the feature service.
+  google.protobuf.Timestamp created_timestamp = 8;
+
+  // Last update time of the feature service.
+  google.protobuf.Timestamp last_updated_timestamp = 9;
+}
+
+message FeatureViewProjection {
+  // The feature view name.
+  string feature_view_name = 1;
+
+  // Alias for feature view name.
+  string feature_view_name_alias = 3;
+
+  // The features of the feature view that are a part of the feature reference.
+  repeated Feature feature_columns = 2;
+
+  // Map for entity join_key overrides feature data entity join_key to entity data join_key.
+  map<string,string> join_key_map = 4;
+}

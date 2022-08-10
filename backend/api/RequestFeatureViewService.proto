@@ -1,0 +1,120 @@
+syntax = "proto3";
+
+package api;
+option go_package = "github.com/feast-dev/feast/backend/api/go_client";
+
+import "ValueType.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  responses: {
+    key: "default";
+    value: {
+      schema: {
+        json_schema: {
+          ref: ".api.Status";
+        }
+      }
+    }
+  }
+  // Use bearer token for authorizing access to request feature view service.
+  security_definitions: {
+    security: {
+      key: "Bearer";
+      value: {
+        type: TYPE_API_KEY;
+        in: IN_HEADER;
+        name: "authorization";
+      }
+    }
+  }
+  security: {
+    security_requirement: {
+      key: "Bearer";
+      value: {};
+    }
+  }
+};
+
+service RequestFeatureViewService {
+  rpc CreateRequestFeatureView (CreateRequestFeatureViewRequest) returns (RequestFeatureView) {
+    option (google.api.http) = {
+      post: "/CreateRequestFeatureView",
+      body: "request_feature_view"
+    };
+  }
+
+  rpc GetRequestFeatureView (GetRequestFeatureViewRequest) returns (RequestFeatureView) {
+    option (google.api.http) = {
+      get: "/GetRequestFeatureView"
+    };
+  }
+
+  rpc UpdateRequestFeatureView (UpdateRequestFeatureViewRequest) returns (RequestFeatureView) {
+    option (google.api.http) = {
+      post: "/UpdateRequestFeatureView",
+      body: "request_feature_view"
+    };
+  }
+
+  rpc DeleteRequestFeatureView (DeleteRequestFeatureViewRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/DeleteRequestFeatureView"
+    };
+  }
+
+  rpc ListRequestFeatureViews (ListRequestFeatureViewsRequest) returns (ListRequestFeatureViewsResponse) {
+    option (google.api.http) = {
+      get: "/ListRequestFeatureViews"
+    };
+  }
+}
+
+message CreateRequestFeatureViewRequest {
+  RequestFeatureView request_feature_view = 1;
+}
+
+message GetRequestFeatureViewRequest {
+  string name = 1;
+  string project = 2;
+}
+
+message UpdateRequestFeatureViewRequest {
+  RequestFeatureView request_feature_view = 1;
+}
+
+message DeleteRequestFeatureViewRequest {
+  string name = 1;
+  string project = 2;
+}
+
+message ListRequestFeatureViewsRequest {
+  string project = 1;
+}
+
+message ListRequestFeatureViewsResponse {
+  repeated RequestFeatureView request_feature_views = 1;
+}
+
+message RequestFeatureView {
+  // Name of the request feature view. Must be unique. Not updated.
+  string name = 1;
+
+  // Name of Feast project that this request feature view belongs to.
+  string project = 2;
+
+  // Request data source which contains the underlying data schema and list of associated features.
+  // Protobuf object transformed to a JSON string.
+  string request_data_source = 3;
+
+  // Description of the request feature view.
+  string description = 4;
+
+  // User defined metadata.
+  map<string,string> tags = 5;
+
+  // Owner of the request feature view.
+  string owner = 6;
+}
