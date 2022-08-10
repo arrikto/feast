@@ -5,8 +5,10 @@ import (
 	"net/http"
 
 	api "github.com/feast-dev/feast/backend/api/go_client"
+	"github.com/feast-dev/feast/backend/src/apiserver/common"
 	"github.com/feast-dev/feast/backend/src/apiserver/resource"
 	util "github.com/feast-dev/feast/backend/src/utils"
+	authorizationv1 "k8s.io/api/authorization/v1"
 )
 
 type InfraObjectServerOptions struct{}
@@ -18,7 +20,17 @@ type InfraObjectServer struct {
 }
 
 func (s *InfraObjectServer) UpdateInfraObjects(ctx context.Context, request *api.UpdateInfraObjectsRequest) (*api.UpdateInfraObjectsResponse, error) {
-	infra_objects, err := s.resourceManager.UpdateInfraObjects(request.InfraObjects.Objects, request.Project, request.Namespace)
+	resourceAttributes := &authorizationv1.ResourceAttributes{
+		Namespace: request.Project,
+		Verb:      common.RbacResourceVerbUpdate,
+	}
+
+	err := s.haveAccess(ctx, resourceAttributes)
+	if err != nil {
+		return nil, util.Wrap(err, "Failed to authorize the request")
+	}
+
+	infra_objects, err := s.resourceManager.UpdateInfraObjects(request.InfraObjects.Objects, request.Project)
 	if err != nil {
 		return nil, util.Wrap(err, "Update infra objects failed")
 	}
@@ -29,13 +41,44 @@ func (s *InfraObjectServer) UpdateInfraObjects(ctx context.Context, request *api
 }
 
 func (s *InfraObjectServer) ListInfraObjects(ctx context.Context, request *api.ListInfraObjectsRequest) (*api.ListInfraObjectsResponse, error) {
-	infra_objects, err := s.resourceManager.ListInfraObjects(request.Project, request.Namespace)
+	resourceAttributes := &authorizationv1.ResourceAttributes{
+		Namespace: request.Project,
+		Verb:      common.RbacResourceVerbList,
+	}
+
+	err := s.haveAccess(ctx, resourceAttributes)
+	if err != nil {
+		return nil, util.Wrap(err, "Failed to authorize the request")
+	}
+
+	infra_objects, err := s.resourceManager.ListInfraObjects(request.Project)
 	if err != nil {
 		return nil, util.Wrap(err, "List infra objects failed")
 	}
 	apiInfraObjects := ToApiInfraObjects(infra_objects)
 
 	return &api.ListInfraObjectsResponse{InfraObjects: apiInfraObjects}, nil
+}
+
+func (s *InfraObjectServer) haveAccess(ctx context.Context, resourceAttributes *authorizationv1.ResourceAttributes) error {
+	if !common.IsMultiUserMode() {
+		// Skip authorization if not multi-user mode.
+		return nil
+	}
+	if resourceAttributes.Namespace == "" {
+		return nil
+	}
+
+	resourceAttributes.Group = common.RbacFeaturesGroup
+	resourceAttributes.Version = common.RbacFeaturesVersion
+	resourceAttributes.Resource = common.RbacResourceTypeInfraObjects
+
+	err := isAuthorized(s.resourceManager, ctx, resourceAttributes)
+	if err != nil {
+		return util.Wrap(err, "Failed to authorize with API resource references")
+	}
+
+	return nil
 }
 
 func NewInfraObjectServer(resourceManager *resource.ResourceManager, options *InfraObjectServerOptions) *InfraObjectServer {

@@ -15,3 +15,34 @@ const (
 	RequestFeatureView  model.ResourceType = "RequestFeatureView"
 	SavedDataset        model.ResourceType = "SavedDataset"
 )
+
+const (
+	RbacKubeflowGroup   = "kubeflow.org"
+	RbacFeaturesGroup   = "features.kubeflow.org"
+	RbacFeaturesVersion = "v1beta1"
+
+	RbacResourceTypeProjects             = "projects"
+	RbacResourceTypeEntities             = "entities"
+	RbacResourceTypeDataSources          = "data_sources"
+	RbacResourceTypeFeatureServices      = "feature_services"
+	RbacResourceTypeFeatureViews         = "feature_views"
+	RbacResourceTypeInfraObjects         = "infra_objects"
+	RbacResourceTypeOnDemandFeatureViews = "on_demand_feature_views"
+	RbacResourceTypeRequestFeatureViews  = "request_feature_views"
+	RbacResourceTypeSavedDatasets        = "saved_datasets"
+
+	RbacResourceVerbUpdate = "update"
+	RbacResourceVerbCreate = "create"
+	RbacResourceVerbDelete = "delete"
+	RbacResourceVerbGet    = "get"
+	RbacResourceVerbList   = "list"
+)
+
+const (
+	GoogleIAPUserIdentityHeader    string = "x-goog-authenticated-user-email"
+	GoogleIAPUserIdentityPrefix    string = "accounts.google.com:"
+	AuthorizationBearerTokenHeader string = "Authorization"
+	AuthorizationBearerTokenPrefix string = "Bearer "
+)
+
+const DefaultTokenReviewAudience string = "features.kubeflow.org"

@@ -8,6 +8,14 @@ import (
 	"github.com/spf13/viper"
 )
 
+const (
+	MultiUserMode                 string = "MULTIUSER"
+	MultiUserModeSharedReadAccess string = "MULTIUSER_SHARED_READ"
+	KubeflowUserIDHeader          string = "KUBEFLOW_USERID_HEADER"
+	KubeflowUserIDPrefix          string = "KUBEFLOW_USERID_PREFIX"
+	TokenReviewAudience           string = "TOKEN_REVIEW_AUDIENCE"
+)
+
 func GetStringConfig(configName string) string {
 	if !viper.IsSet(configName) {
 		glog.Fatalf("Please specify flag %s", configName)
@@ -68,4 +76,24 @@ func GetDurationConfig(configName string) time.Duration {
 	}
 
 	return viper.GetDuration(configName)
+}
+
+func IsMultiUserMode() bool {
+	return GetBoolConfigWithDefault(MultiUserMode, false)
+}
+
+func IsMultiUserSharedReadMode() bool {
+	return GetBoolConfigWithDefault(MultiUserModeSharedReadAccess, false)
+}
+
+func GetKubeflowUserIDHeader() string {
+	return GetStringConfigWithDefault(KubeflowUserIDHeader, GoogleIAPUserIdentityHeader)
+}
+
+func GetKubeflowUserIDPrefix() string {
+	return GetStringConfigWithDefault(KubeflowUserIDPrefix, GoogleIAPUserIdentityPrefix)
+}
+
+func GetTokenReviewAudience() string {
+	return GetStringConfigWithDefault(TokenReviewAudience, DefaultTokenReviewAudience)
 }

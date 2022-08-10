@@ -1,14 +1,23 @@
 package resource
 
 import (
+	"context"
+	"errors"
+
 	api "github.com/feast-dev/feast/backend/api/go_client"
+	frsauth "github.com/feast-dev/feast/backend/src/apiserver/auth"
+	"github.com/feast-dev/feast/backend/src/apiserver/client"
 	"github.com/feast-dev/feast/backend/src/apiserver/model"
 	"github.com/feast-dev/feast/backend/src/apiserver/storage"
 
 	util "github.com/feast-dev/feast/backend/src/utils"
+	authorizationv1 "k8s.io/api/authorization/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
 type ClientManagerInterface interface {
+	Authenticators() []frsauth.Authenticator
 	DataSourceStore() storage.DataSourceStoreInterface
 	EntityStore() storage.EntityStoreInterface
 	FeatureViewStore() storage.FeatureViewStoreInterface
@@ -19,23 +28,28 @@ type ClientManagerInterface interface {
 	ProjectStore() storage.ProjectStoreInterface
 	RequestFeatureViewStore() storage.RequestFeatureViewStoreInterface
 	SavedDatasetStore() storage.SavedDatasetStoreInterface
+	SubjectAccessReviewClient() client.SubjectAccessReviewInterface
 	Time() util.TimeInterface
+	TokenReviewClient() client.TokenReviewInterface
 	UUID() util.UUIDGeneratorInterface
 }
 
 type ResourceManager struct {
-	dataSourceStore         storage.DataSourceStoreInterface
-	entityStore             storage.EntityStoreInterface
-	featureViewStore        storage.FeatureViewStoreInterface
-	featureServiceStore     storage.FeatureServiceStoreInterface
-	infraObjectStore        storage.InfraObjectStoreInterface
-	miStore                 storage.MIStoreInterface
-	odFeatureViewStore      storage.OnDemandFeatureViewStoreInterface
-	projectStore            storage.ProjectStoreInterface
-	requestFeatureViewStore storage.RequestFeatureViewStoreInterface
-	savedDatasetStore       storage.SavedDatasetStoreInterface
-	time                    util.TimeInterface
-	uuid                    util.UUIDGeneratorInterface
+	authenticators            []frsauth.Authenticator
+	dataSourceStore           storage.DataSourceStoreInterface
+	entityStore               storage.EntityStoreInterface
+	featureViewStore          storage.FeatureViewStoreInterface
+	featureServiceStore       storage.FeatureServiceStoreInterface
+	infraObjectStore          storage.InfraObjectStoreInterface
+	miStore                   storage.MIStoreInterface
+	odFeatureViewStore        storage.OnDemandFeatureViewStoreInterface
+	projectStore              storage.ProjectStoreInterface
+	requestFeatureViewStore   storage.RequestFeatureViewStoreInterface
+	savedDatasetStore         storage.SavedDatasetStoreInterface
+	subjectAccessReviewClient client.SubjectAccessReviewInterface
+	time                      util.TimeInterface
+	tokenReviewClient         client.TokenReviewInterface
+	uuid                      util.UUIDGeneratorInterface
 }
 
 func NewResourceManager(clientManager ClientManagerInterface) *ResourceManager {
@@ -798,4 +812,56 @@ func (r *ResourceManager) ListSavedDatasets(project string) ([]*model.SavedDatas
 	}
 
 	return savedDatasetModels, nil
+}
+
+func (r *ResourceManager) AuthenticateRequest(ctx context.Context) (string, []string, error) {
+	if ctx == nil {
+		return "", make([]string, 0), util.NewUnauthenticatedError(errors.New("request error: context is nil"), "Request error: context is nil.")
+	}
+
+	// If the request header contains the user identity, requests are authorized
+	// based on the namespace field in the request.
+	var errlist []error
+	for _, auth := range r.authenticators {
+		userIdentity, userGroups, err := auth.GetUserIdentity(ctx)
+		if err == nil {
+			return userIdentity, userGroups, nil
+		}
+		errlist = append(errlist, err)
+	}
+
+	return "", make([]string, 0), utilerrors.NewAggregate(errlist)
+}
+
+func (r *ResourceManager) IsRequestAuthorized(ctx context.Context, userIdentity string, userGroups []string, resourceAttributes *authorizationv1.ResourceAttributes) error {
+	result, err := r.subjectAccessReviewClient.Create(
+		ctx,
+		&authorizationv1.SubjectAccessReview{
+			Spec: authorizationv1.SubjectAccessReviewSpec{
+				ResourceAttributes: resourceAttributes,
+				User:               userIdentity,
+				Groups:             userGroups,
+			},
+		},
+		v1.CreateOptions{},
+	)
+	if err != nil {
+		return util.NewInternalServerError(
+			err,
+			"Failed to create SubjectAccessReview for user '%s' (request: %+v)",
+			userIdentity,
+			resourceAttributes,
+		)
+	}
+	if !result.Status.Allowed {
+		return util.NewPermissionDeniedError(
+			errors.New("unauthorized access"),
+			"User '%s' is not authorized with reason: %s (request: %+v)",
+			userIdentity,
+			result.Status.Reason,
+			resourceAttributes,
+		)
+	}
+
+	return nil
 }

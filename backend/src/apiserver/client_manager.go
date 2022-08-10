@@ -7,6 +7,7 @@ import (
 
 	"github.com/feast-dev/feast/backend/src/apiserver/storage"
 
+	"github.com/feast-dev/feast/backend/src/apiserver/auth"
 	"github.com/feast-dev/feast/backend/src/apiserver/common"
 	"github.com/feast-dev/feast/backend/src/apiserver/model"
 	util "github.com/feast-dev/feast/backend/src/utils"
@@ -30,23 +31,33 @@ const (
 	dbConMaxLifeTime       = "DBConfig.ConMaxLifeTime"
 
 	initConnectionTimeout = "InitConnectionTimeout"
+
+	clientQPS   = "ClientQPS"
+	clientBurst = "ClientBurst"
 )
 
 // Container for all service clients
 type ClientManager struct {
-	db                       *storage.DB
-	dataSourceStore          storage.DataSourceStoreInterface
-	entityStore              storage.EntityStoreInterface
-	featureServiceStore      storage.FeatureServiceStoreInterface
-	featureViewStore         storage.FeatureViewStoreInterface
-	infraObjectStore         storage.InfraObjectStoreInterface
-	miStore                  storage.MIStoreInterface
-	onDemandFeatureViewStore storage.OnDemandFeatureViewStoreInterface
-	projectStore             storage.ProjectStoreInterface
-	requestFeatureViewStore  storage.RequestFeatureViewStoreInterface
-	savedDatasetStore        storage.SavedDatasetStoreInterface
-	time                     util.TimeInterface
-	uuid                     util.UUIDGeneratorInterface
+	db                        *storage.DB
+	authenticators            []auth.Authenticator
+	dataSourceStore           storage.DataSourceStoreInterface
+	entityStore               storage.EntityStoreInterface
+	featureServiceStore       storage.FeatureServiceStoreInterface
+	featureViewStore          storage.FeatureViewStoreInterface
+	infraObjectStore          storage.InfraObjectStoreInterface
+	miStore                   storage.MIStoreInterface
+	onDemandFeatureViewStore  storage.OnDemandFeatureViewStoreInterface
+	projectStore              storage.ProjectStoreInterface
+	requestFeatureViewStore   storage.RequestFeatureViewStoreInterface
+	savedDatasetStore         storage.SavedDatasetStoreInterface
+	subjectAccessReviewClient client.SubjectAccessReviewInterface
+	time                      util.TimeInterface
+	tokenReviewClient         client.TokenReviewInterface
+	uuid                      util.UUIDGeneratorInterface
+}
+
+func (c *ClientManager) Authenticators() []auth.Authenticator {
+	return c.authenticators
 }
 
 func (c *ClientManager) DataSourceStore() storage.DataSourceStoreInterface {
@@ -89,8 +100,16 @@ func (c *ClientManager) SavedDatasetStore() storage.SavedDatasetStoreInterface {
 	return c.savedDatasetStore
 }
 
+func (c *ClientManager) SubjectAccessReviewClient() client.SubjectAccessReviewInterface {
+	return c.subjectAccessReviewClient
+}
+
 func (c *ClientManager) Time() util.TimeInterface {
 	return c.time
+}
+
+func (c *ClientManager) TokenReviewClient() client.TokenReviewInterface {
+	return c.tokenReviewClient
 }
 
 func (c *ClientManager) UUID() util.UUIDGeneratorInterface {
@@ -119,6 +138,19 @@ func (c *ClientManager) init() {
 	c.projectStore = storage.NewProjectStore(db, c.time, c.uuid)
 	c.requestFeatureViewStore = storage.NewRequestFeatureViewStore(db, c.time, c.uuid)
 	c.savedDatasetStore = storage.NewSavedDatasetStore(db, c.time, c.uuid)
+
+	// Use default value of client QPS (5) & burst (10) defined in
+	// k8s.io/client-go/rest/config.go#RESTClientFor
+	clientParams := util.ClientParameters{
+		QPS:   common.GetFloat64ConfigWithDefault(clientQPS, 5),
+		Burst: common.GetIntConfigWithDefault(clientBurst, 10),
+	}
+
+	if common.IsMultiUserMode() {
+		c.subjectAccessReviewClient = client.CreateSubjectAccessReviewClientOrFatal(common.GetDurationConfig(initConnectionTimeout), clientParams)
+		c.tokenReviewClient = client.CreateTokenReviewClientOrFatal(common.GetDurationConfig(initConnectionTimeout), clientParams)
+		c.authenticators = auth.GetAuthenticators(c.tokenReviewClient)
+	}
 
 	glog.Infof("Client manager initialized successfully")
 }
