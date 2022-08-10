@@ -59,7 +59,7 @@ class GCSRegistryStore(RegistryStore):
         )
 
     @log_exceptions_and_usage(registry="gs")
-    def update_registry_proto(self, registry_proto: RegistryProto):
+    def update_registry_proto(self, registry_proto: RegistryProto, **kwargs):
         self._write_registry(registry_proto)
 
     def teardown(self):

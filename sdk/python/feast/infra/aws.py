@@ -397,7 +397,7 @@ class S3RegistryStore(RegistryStore):
             ) from e
 
     @log_exceptions_and_usage(registry="s3")
-    def update_registry_proto(self, registry_proto: RegistryProto):
+    def update_registry_proto(self, registry_proto: RegistryProto, **kwargs):
         self._write_registry(registry_proto)
 
     def teardown(self):

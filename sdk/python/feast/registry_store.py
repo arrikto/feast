@@ -20,7 +20,7 @@ class RegistryStore(ABC):
         pass
 
     @abstractmethod
-    def update_registry_proto(self, registry_proto: RegistryProto):
+    def update_registry_proto(self, registry_proto: RegistryProto, **kwargs):
         """
         Overwrites the current registry proto with the proto passed in. This method
         writes to the registry path.
@@ -42,7 +42,7 @@ class NoopRegistryStore(RegistryStore):
     def get_registry_proto(self) -> RegistryProto:
         pass
 
-    def update_registry_proto(self, registry_proto: RegistryProto):
+    def update_registry_proto(self, registry_proto: RegistryProto, **kwargs):
         pass
 
     def teardown(self):

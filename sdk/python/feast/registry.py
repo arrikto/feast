@@ -13,6 +13,7 @@
 # limitations under the License.
 import json
 import logging
+import queue
 from collections import defaultdict
 from datetime import datetime, timedelta
 from enum import Enum
@@ -149,6 +150,7 @@ class Registry:
     cached_registry_proto: Optional[RegistryProto] = None
     cached_registry_proto_created: Optional[datetime] = None
     cached_registry_proto_ttl: timedelta
+    pending_ops: queue.Queue = queue.Queue()
 
     def __init__(
         self, registry_config: Optional[RegistryConfig], repo_path: Optional[Path]
@@ -198,7 +200,11 @@ class Registry:
         except FileNotFoundError:
             registry_proto = RegistryProto()
             registry_proto.registry_schema_version = REGISTRY_SCHEMA_VERSION
-            self._registry_store.update_registry_proto(registry_proto)
+            self.pending_ops.put({"op": "CreateProject", "proto": registry_proto})
+            self._registry_store.update_registry_proto(
+                registry_proto, pending_ops=self.pending_ops
+            )
+            self.pending_ops.queue.clear()
 
     def update_infra(self, infra: Infra, project: str, commit: bool = True):
         """
@@ -212,7 +218,10 @@ class Registry:
         self._prepare_registry_for_changes()
         assert self.cached_registry_proto
 
-        self.cached_registry_proto.infra.CopyFrom(infra.to_proto())
+        infra_proto = infra.to_proto()
+        self.pending_ops.put({"op": "UpdateInfra", "proto": infra_proto})
+
+        self.cached_registry_proto.infra.CopyFrom(infra_proto)
         if commit:
             self.commit()
 
@@ -239,6 +248,7 @@ class Registry:
             project: Feast project that this entity belongs to
             commit: Whether the change should be persisted immediately
         """
+        update = False
         entity.is_valid()
 
         now = datetime.utcnow()
@@ -259,7 +269,13 @@ class Registry:
                 and existing_entity_proto.spec.project == project
             ):
                 del self.cached_registry_proto.entities[idx]
+                update = True
                 break
+
+        if update:
+            self.pending_ops.put({"op": "UpdateEntity", "proto": entity_proto})
+        else:
+            self.pending_ops.put({"op": "CreateEntity", "proto": entity_proto})
 
         self.cached_registry_proto.entities.append(entity_proto)
         if commit:
@@ -314,10 +330,13 @@ class Registry:
             project: Feast project that this data source belongs to
             commit: Whether to immediately commit to the registry
         """
+        update = False
+
         registry = self._prepare_registry_for_changes()
         for idx, existing_data_source_proto in enumerate(registry.data_sources):
             if existing_data_source_proto.name == data_source.name:
                 del registry.data_sources[idx]
+                update = True
         data_source_proto = data_source.to_proto()
         data_source_proto.data_source_class_type = (
             f"{data_source.__class__.__module__}.{data_source.__class__.__name__}"
@@ -326,6 +345,12 @@ class Registry:
         data_source_proto.data_source_class_type = (
             f"{data_source.__class__.__module__}.{data_source.__class__.__name__}"
         )
+
+        if update:
+            self.pending_ops.put({"op": "UpdateDataSource", "proto": data_source_proto})
+        else:
+            self.pending_ops.put({"op": "CreateDataSource", "proto": data_source_proto})
+
         registry.data_sources.append(data_source_proto)
         if commit:
             self.commit()
@@ -347,6 +372,7 @@ class Registry:
         ):
             if data_source_proto.name == name:
                 del self.cached_registry_proto.data_sources[idx]
+                self.pending_ops.put({"op": "DeleteDataSource", "name": name})
                 if commit:
                     self.commit()
                 return
@@ -362,6 +388,8 @@ class Registry:
             feature_service: A feature service that will be registered
             project: Feast project that this entity belongs to
         """
+        update = False
+
         now = datetime.utcnow()
         if not feature_service.created_timestamp:
             feature_service.created_timestamp = now
@@ -379,6 +407,17 @@ class Registry:
                 and existing_feature_service_proto.spec.project == project
             ):
                 del registry.feature_services[idx]
+                update = True
+
+        if update:
+            self.pending_ops.put(
+                {"op": "UpdateFeatureService", "proto": feature_service_proto}
+            )
+        else:
+            self.pending_ops.put(
+                {"op": "CreateFeatureService", "proto": feature_service_proto}
+            )
+
         registry.feature_services.append(feature_service_proto)
         if commit:
             self.commit()
@@ -461,6 +500,7 @@ class Registry:
             project: Feast project that this feature view belongs to
             commit: Whether the change should be persisted immediately
         """
+        update = False
         feature_view.ensure_valid()
 
         now = datetime.utcnow()
@@ -479,14 +519,17 @@ class Registry:
             existing_feature_views_of_same_type = (
                 self.cached_registry_proto.feature_views
             )
+            fv_type = "FeatureView"
         elif isinstance(feature_view, OnDemandFeatureView):
             existing_feature_views_of_same_type = (
                 self.cached_registry_proto.on_demand_feature_views
             )
+            fv_type = "OnDemandFeatureView"
         elif isinstance(feature_view, RequestFeatureView):
             existing_feature_views_of_same_type = (
                 self.cached_registry_proto.request_feature_views
             )
+            fv_type = "RequestFeatureView"
         else:
             raise ValueError(f"Unexpected feature view type: {type(feature_view)}")
 
@@ -504,7 +547,17 @@ class Registry:
                     return
                 else:
                     del existing_feature_views_of_same_type[idx]
+                    update = True
                     break
+
+        if update:
+            self.pending_ops.put(
+                {"op": f"Update{fv_type}", "proto": feature_view_proto}
+            )
+        else:
+            self.pending_ops.put(
+                {"op": f"Create{fv_type}", "proto": feature_view_proto}
+            )
 
         existing_feature_views_of_same_type.append(feature_view_proto)
         if commit:
@@ -618,6 +671,18 @@ class Registry:
                 feature_view_proto.spec.project = project
                 del self.cached_registry_proto.feature_views[idx]
                 self.cached_registry_proto.feature_views.append(feature_view_proto)
+
+                self.pending_ops.put(
+                    {"op": "UpdateFeatureView", "proto": feature_view_proto}
+                )
+                self.pending_ops.put(
+                    {
+                        "op": "ReportMI",
+                        "name": feature_view.name,
+                        "mi": (start_date, end_date),
+                    }
+                )
+
                 if commit:
                     self.commit()
                 return
@@ -710,6 +775,7 @@ class Registry:
                 and feature_service_proto.spec.project == project
             ):
                 del self.cached_registry_proto.feature_services[idx]
+                self.pending_ops.put({"op": "DeleteFeatureService", "name": name})
                 if commit:
                     self.commit()
                 return
@@ -735,6 +801,7 @@ class Registry:
                 and existing_feature_view_proto.spec.project == project
             ):
                 del self.cached_registry_proto.feature_views[idx]
+                self.pending_ops.put({"op": "DeleteFeatureView", "name": name})
                 if commit:
                     self.commit()
                 return
@@ -747,6 +814,7 @@ class Registry:
                 and existing_request_feature_view_proto.spec.project == project
             ):
                 del self.cached_registry_proto.request_feature_views[idx]
+                self.pending_ops.put({"op": "DeleteRequestFeatureView", "name": name})
                 if commit:
                     self.commit()
                 return
@@ -759,6 +827,7 @@ class Registry:
                 and existing_on_demand_feature_view_proto.spec.project == project
             ):
                 del self.cached_registry_proto.on_demand_feature_views[idx]
+                self.pending_ops.put({"op": "OnDemandDeleteFeatureView", "name": name})
                 if commit:
                     self.commit()
                 return
@@ -785,6 +854,7 @@ class Registry:
                 and existing_entity_proto.spec.project == project
             ):
                 del self.cached_registry_proto.entities[idx]
+                self.pending_ops.put({"op": "DeleteEntity", "name": name})
                 if commit:
                     self.commit()
                 return
@@ -802,6 +872,8 @@ class Registry:
             project: Feast project that this dataset belongs to
             commit: Whether the change should be persisted immediately
         """
+        update = False
+
         now = datetime.utcnow()
         if not saved_dataset.created_timestamp:
             saved_dataset.created_timestamp = now
@@ -820,7 +892,17 @@ class Registry:
                 and existing_saved_dataset_proto.spec.project == project
             ):
                 del self.cached_registry_proto.saved_datasets[idx]
+                update = True
                 break
+
+        if update:
+            self.pending_ops.put(
+                {"op": "UpdateSavedDataset", "proto": saved_dataset_proto}
+            )
+        else:
+            self.pending_ops.put(
+                {"op": "CreateSavedDataset", "proto": saved_dataset_proto}
+            )
 
         self.cached_registry_proto.saved_datasets.append(saved_dataset_proto)
         if commit:
@@ -873,7 +955,10 @@ class Registry:
     def commit(self):
         """Commits the state of the registry cache to the remote registry store."""
         if self.cached_registry_proto:
-            self._registry_store.update_registry_proto(self.cached_registry_proto)
+            self._registry_store.update_registry_proto(
+                self.cached_registry_proto, pending_ops=self.pending_ops
+            )
+            self.pending_ops.queue.clear()
 
     def refresh(self):
         """Refreshes the state of the registry cache by fetching the registry state from the remote registry store."""
@@ -959,6 +1044,7 @@ class Registry:
         except FileNotFoundError:
             registry_proto = RegistryProto()
             registry_proto.registry_schema_version = REGISTRY_SCHEMA_VERSION
+            self.pending_ops.put({"op": "CreateProject", "proto": registry_proto})
             self.cached_registry_proto = registry_proto
             self.cached_registry_proto_created = datetime.utcnow()
         return self.cached_registry_proto

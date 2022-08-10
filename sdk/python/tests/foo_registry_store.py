@@ -13,7 +13,7 @@ class FooRegistryStore(RegistryStore):
     def get_registry_proto(self):
         return self.registry_proto
 
-    def update_registry_proto(self, registry_proto: RegistryProto):
+    def update_registry_proto(self, registry_proto: RegistryProto, **kwargs):
         self.registry_proto = registry_proto
 
     def teardown(self):
