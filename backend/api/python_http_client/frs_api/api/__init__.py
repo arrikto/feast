@@ -1,0 +1,14 @@
+from __future__ import absolute_import
+
+# flake8: noqa
+
+# import apis into api package
+from frs_api.api.data_source_service_api import DataSourceServiceApi
+from frs_api.api.entity_service_api import EntityServiceApi
+from frs_api.api.feature_service_service_api import FeatureServiceServiceApi
+from frs_api.api.feature_view_service_api import FeatureViewServiceApi
+from frs_api.api.infra_object_service_api import InfraObjectServiceApi
+from frs_api.api.on_demand_feature_view_service_api import OnDemandFeatureViewServiceApi
+from frs_api.api.project_service_api import ProjectServiceApi
+from frs_api.api.request_feature_view_service_api import RequestFeatureViewServiceApi
+from frs_api.api.saved_dataset_service_api import SavedDatasetServiceApi
