@@ -65,6 +65,7 @@ class PostgreSQLSource(DataSource):
             data_source_class_type="feast.infra.offline_stores.contrib.postgres_offline_store.postgres_source.PostgreSQLSource",
             field_mapping=self.field_mapping,
             custom_options=self._postgres_options.to_proto(),
+            name=self._postgres_options._name,
         )
 
         data_source_proto.timestamp_field = self.timestamp_field
