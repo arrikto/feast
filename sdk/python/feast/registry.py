@@ -60,6 +60,7 @@ REGISTRY_STORE_CLASS_FOR_TYPE = {
     "S3RegistryStore": "feast.infra.aws.S3RegistryStore",
     "LocalRegistryStore": "feast.infra.local.LocalRegistryStore",
     "PostgreSQLRegistryStore": "feast.infra.registry_stores.contrib.postgres.registry_store.PostgreSQLRegistryStore",
+    "KubeflowRegistryStore": "feast.infra.registry_stores.contrib.kubeflow.registry_store.KubeflowRegistryStore",
 }
 
 REGISTRY_STORE_CLASS_FOR_SCHEME = {
