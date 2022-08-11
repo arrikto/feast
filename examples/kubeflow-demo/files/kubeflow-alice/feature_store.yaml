@@ -1,0 +1,18 @@
+project: kubeflow-alice
+provider: local
+registry:
+  registry_store_type: KubeflowRegistryStore
+  path: ""
+online_store:
+  type: redis
+  connection_string: "redis-online-store.default.svc.cluster.local:6379,username=alice,password=alice,db=0"
+offline_store:
+  type: postgres
+  host: postgresql-offline-store.default.svc.cluster.local
+  database: driver_data
+  db_schema: driver_data
+  user: alice
+  password: alice
+flags:
+    alpha_features: true
+    on_demand_transforms: true

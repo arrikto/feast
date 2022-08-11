@@ -1,0 +1,18 @@
+project: kubeflow-charlie
+provider: local
+registry:
+  registry_store_type: KubeflowRegistryStore
+  path: ""
+online_store:
+  type: redis
+  connection_string: "redis-online-store.default.svc.cluster.local:6379,username=charlie,password=charlie,db=0"
+offline_store:
+  type: postgres
+  host: postgresql-offline-store.default.svc.cluster.local
+  database: driver_stream_data
+  db_schema: driver_stream_data
+  user: charlie
+  password: charlie
+flags:
+    alpha_features: true
+    on_demand_transforms: true

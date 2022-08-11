@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgresql
+  namespace: default
+  labels:
+    app: feast-postgresql
+data:
+  init-0.sh: |-
+    psql postgresql://postgres:postgres@localhost:5432/postgres -c \
+    "CREATE USER alice with encrypted password 'alice'; 
+    CREATE USER bob with encrypted password 'bob'; 
+    CREATE USER charlie with encrypted password 'charlie';"
+
+    psql postgresql://postgres:postgres@localhost:5432/postgres -c \
+    "CREATE DATABASE driver_data WITH OWNER alice;"
+
+    psql postgresql://postgres:postgres@localhost:5432/postgres -c \
+    "CREATE DATABASE driver_stream_data WITH OWNER charlie;"
+  init-1.sh: |-
+    psql postgresql://postgres:postgres@localhost:5432/driver_data -c \
+    "CREATE schema driver_data;
+    GRANT ALL PRIVILEGES ON SCHEMA driver_data TO alice;
+
+    GRANT CONNECT ON DATABASE driver_data TO bob;
+    GRANT USAGE ON SCHEMA driver_data TO bob;"
+
+    psql postgresql://postgres:postgres@localhost:5432/driver_stream_data -c \
+    "CREATE schema driver_stream_data;
+    GRANT ALL PRIVILEGES ON SCHEMA driver_stream_data TO charlie;
+
+    GRANT CONNECT ON DATABASE driver_stream_data TO bob;
+    GRANT USAGE ON SCHEMA driver_stream_data TO bob;"

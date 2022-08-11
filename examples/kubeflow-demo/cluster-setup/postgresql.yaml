@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: feast-postgresql-sts
+  namespace: default
+spec:
+  replicas: 1
+  serviceName: postgresql-offline-store
+  selector:
+    matchLabels:
+      app: feast-postgresql
+  template:
+    metadata:
+      name: feast-postgresql
+      labels:
+        app: feast-postgresql
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+      securityContext:
+        fsGroup: 1001
+      initContainers:
+      - name: init-chmod-data
+        image: bitnami/minideb:latest
+        imagePullPolicy: Always
+        command:
+          - sh
+          - -c
+          - |
+            chown -R 1001:1001 /bitnami
+            if [ -d /bitnami/postgresql/data ]; then
+              chmod  0700 /bitnami/postgresql/data;
+            fi
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - name: data
+          mountPath: /bitnami/postgresql 
+      containers:
+      - name: postgresql
+        image: bitnami/postgresql:14.1.0
+        volumeMounts:
+          - name: data
+            mountPath: /bitnami/postgresql 
+          - name: config
+            mountPath: /docker-entrypoint-initdb.d
+        env:
+        - name: POSTGRESQL_PASSWORD
+          value: postgres
+        ports:
+          - name: postgresql
+            containerPort: 5432
+            protocol: TCP
+      volumes:
+      - name: config
+        configMap:
+          name: postgresql
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        storageClassName: rok
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgresql-offline-store
+  namespace: default
+spec:
+  type: ClusterIP
+  ports:
+  - name: postgresql
+    port: 5432
+    targetPort: postgresql
+  selector:
+    app: feast-postgresql

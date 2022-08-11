@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: feast-redis-sts
+  namespace: default
+spec:
+  replicas: 1
+  serviceName: redis-online-store
+  selector:
+    matchLabels:
+      app: feast-redis
+  template:
+    metadata:
+      name: feast-redis
+      labels:
+        app: feast-redis
+    spec:
+      securityContext:
+        fsGroup: 1001
+      initContainers:
+      - name: init-chmod-data
+        image: bitnami/minideb:latest
+        imagePullPolicy: Always
+        command:
+          - sh
+          - -c
+          - |
+            chown -R 1001:1001 /data
+            if [ -d /data ]; then
+              chmod  0700 /data;
+            fi
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - name: data
+          mountPath: /data
+      containers:
+      - name: redis
+        image: bitnami/redis:7.0
+        securityContext:
+          runAsUser: 1001
+        command:
+        - /bin/bash
+        - -c
+        - |
+          ARGS+=("--protected-mode" "no")
+          ARGS=("--include" "/opt/bitnami/redis/etc/redis.conf")
+          ARGS+=("--requirepass" "${REDIS_PASSWORD}")
+          /opt/bitnami/scripts/redis/run.sh ${ARGS[@]}
+        volumeMounts:
+          - name: data
+            mountPath: /data
+          - name: config
+            mountPath: /opt/bitnami/redis/etc
+        env:
+        - name: ALLOW_EMPTY_PASSWORD
+          value: "no"
+        - name: REDIS_PASSWORD
+          value: redis
+        ports:
+          - name: redis
+            containerPort: 6379
+            protocol: TCP
+      volumes:
+      - name: config
+        configMap:
+          name: redis
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        storageClassName: rok
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-online-store
+  namespace: default
+spec:
+  type: ClusterIP
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: redis
+  selector:
+    app: feast-redis

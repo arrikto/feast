@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: feast-registry-d
+  namespace: kubeflow
+  labels:
+    app: feast-registry
+spec:
+  selector:
+    matchLabels:
+      app: feast-registry
+  template:
+    metadata:
+      labels:
+        app: feast-registry
+    spec:
+      containers:
+      - name: feast-registry-apiserver
+        image: gcr.io/arrikto-playground/konpap/apiserver:latest
+        imagePullPolicy: IfNotPresent
+        command:
+          - /tmp/apiserver
+          - --config=/etc/feast-registry-config
+        ports:
+        - containerPort: 8888
+        - containerPort: 8887
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/feast-registry-config
+      volumes:
+        - name: config-volume
+          configMap:
+            name: feast-registry-config
+      serviceAccountName: feast-registry
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: feast-registry-svc
+  namespace: kubeflow
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 8888
+    protocol: TCP
+    targetPort: 8888
+  - name: grpc
+    port: 8887
+    protocol: TCP
+    targetPort: 8887
+  selector:
+    app: feast-registry

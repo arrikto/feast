@@ -1,0 +1,24 @@
+apiVersion: kubeflow.org/v1alpha1
+kind: PodDefault
+metadata:
+  name: access-features
+spec:
+  desc: Allow access to Kubeflow Features
+  selector:
+    matchLabels:
+      access-features: "true"
+  volumeMounts:
+  - mountPath: /var/run/secrets/kubeflow/features
+    name: volume-features-token
+    readOnly: true
+  volumes:
+  - name: volume-features-token
+    projected:
+      sources:
+      - serviceAccountToken:
+          path: token
+          expirationSeconds: 7200
+          audience: features.kubeflow.org
+  env:
+  - name: KF_FEATURES_SA_TOKEN_PATH
+    value: /var/run/secrets/kubeflow/features/token

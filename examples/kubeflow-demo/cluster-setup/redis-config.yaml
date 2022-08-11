@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis
+  namespace: default
+  labels:
+    app: feast-redis
+data:
+  redis.conf: |-
+    # Enable AOF https://redis.io/topics/persistence#append-only-file
+    appendonly yes
+    appendfsync always
+    # Disable RDB persistence, AOF persistence already enabled.
+    save ""
+    # Directory to save persistent data
+    dir /data
+    # File to persist ACL
+    aclfile /opt/bitnami/redis/etc/users.acl
+    # Disable protected mode
+    protected-mode no
+  users.acl: |-
+    user default on #34fb46c847bb9df96e5205a39d382f648a6e8dce1e014cd85b4ca6a88d88ed03 ~* &* +@all
+    user alice on #2bd806c97f0e00af1a1fc3328fa763a9269723c8db8fac4f93af71db186d6e90 -@all +@read +@write ~*kubeflow-alice
+    user bob on #81b637d8fcd2c6da6359e6963113a1170de795e4b725b84d1e0b4cfd9ec58ce9 -@all +@read +@write ~*kubeflow-bob
+    user charlie on #b9dd960c1753459a78115d3cb845a57d924b6877e805b08bd01086ccdf34433c -@all +@read +@write ~*kubeflow-charlie

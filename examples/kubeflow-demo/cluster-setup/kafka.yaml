@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-broker-d
+  namespace: default
+  labels:
+    app: kafka-broker
+spec:
+  selector:
+    matchLabels:
+      app: kafka-broker
+  template:
+    metadata:
+      labels:
+        app: kafka-broker
+    spec:
+      containers:
+      - name: kafka-broker
+        env:
+        # https://www.confluent.io/blog/kafka-listeners-explained/
+        - name: KAFKA_BROKER_ID
+          value: "1"
+        - name: KAFKA_ZOOKEEPER_CONNECT
+          value: "zookeeper.default.svc.cluster.local:2181"
+        - name: KAFKA_LISTENERS
+          value: "EXTERNAL://0.0.0.0:29092,LOCAL://0.0.0.0:9092"
+        - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+          value: "EXTERNAL:PLAINTEXT,LOCAL:PLAINTEXT"
+        - name: KAFKA_ADVERTISED_LISTENERS
+          value: "EXTERNAL://kafka-broker.default.svc.cluster.local:29092,LOCAL://localhost:9092"
+        - name: KAFKA_INTER_BROKER_LISTENER_NAME
+          value: "LOCAL"
+        - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+          value: "1"
+        - name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR
+          value: "1"
+        - name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
+          value: "1"
+        image: confluentinc/cp-kafka:6.2.0
+        ports:
+        - name: kafka-broker
+          containerPort: 9092
+          protocol: TCP
+        - name: kafka-external
+          containerPort: 29092
+          protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-broker
+  namespace: default
+spec:
+  type: ClusterIP
+  ports:
+  - name: kafka-broker
+    port: 29092
+    targetPort: kafka-external
+  selector:
+    app: kafka-broker

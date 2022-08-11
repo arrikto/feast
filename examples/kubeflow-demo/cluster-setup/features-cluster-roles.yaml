@@ -1,0 +1,77 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    rbac.authorization.kubeflow.org/aggregate-to-kubeflow-edit: "true"
+  name: kubeflow-feature-edit
+aggregationRule:
+  clusterRoleSelectors:
+  - matchLabels:
+      rbac.authorization.kubeflow.org/aggregate-to-kubeflow-feature-edit: "true"
+rules: []
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    rbac.authorization.kubeflow.org/aggregate-to-kubeflow-feature-edit: "true"
+    rbac.authorization.kubeflow.org/aggregate-to-kubeflow-view: "true"
+  name: kubeflow-feature-view
+aggregationRule:
+  clusterRoleSelectors:
+  - matchLabels:
+      rbac.authorization.kubeflow.org/aggregate-to-kubeflow-feature-view: "true"
+rules: []
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    rbac.authorization.kubeflow.org/aggregate-to-kubeflow-feature-edit: "true"
+  name: aggregate-to-feature-edit
+rules:
+- apiGroups:
+  - features.kubeflow.org
+  resources:
+  - data_sources
+  - entities
+  - feature_services
+  - feature_views
+  - infra_objects
+  - on_demand_feature_views
+  - projects
+  - request_feature_views
+  - saved_datasets
+  verbs:
+  - create
+  - update
+  - delete
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    rbac.authorization.kubeflow.org/aggregate-to-kubeflow-feature-view: "true"
+  name: aggregate-to-feature-view
+rules:
+- apiGroups:
+  - features.kubeflow.org
+  resources:
+  - data_sources
+  - entities
+  - feature_services
+  - feature_views
+  - infra_objects
+  - on_demand_feature_views
+  - projects
+  - request_feature_views
+  - saved_datasets
+  verbs:
+  - get
+  - list

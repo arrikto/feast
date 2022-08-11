@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: feast-mysql-sts
+  namespace: kubeflow
+spec:
+  replicas: 1
+  serviceName: feast-mysql-svc
+  selector:
+    matchLabels:
+      app: feast-mysql
+  template:
+    metadata:
+      name: feast-mysql
+      labels:
+        app: feast-mysql
+    spec:
+      containers:
+      - name: mysql
+        image: bitnami/mysql:8.0
+        volumeMounts:
+          - name: data
+            mountPath: /bitnami/mysql/data
+        env:
+          - name: MYSQL_ROOT_PASSWORD
+            value: "root"
+          - name: MYSQL_USER
+            value: "feastadmin"
+          - name: MYSQL_PASSWORD
+            value: "feastadmin"
+          - name: MYSQL_DATABASE
+            value: "feast"
+          - name: MYSQL_AUTHENTICATION_PLUGIN
+            value: "mysql_native_password"
+        ports:
+          - name: mysql
+            containerPort: 3306
+            protocol: TCP
+        readinessProbe:
+          exec:
+            command:
+            - "/bin/bash"
+            - "-c"
+            - "MYSQL_PWD=${MYSQL_ROOT_PASSWORD} mysql -u root -e 'SELECT 1' ${@}"
+          initialDelaySeconds: 30
+          periodSeconds: 2
+          timeoutSeconds: 1
+        livenessProbe:
+          exec:
+            command:
+            - "/bin/bash"
+            - "-c"
+            - "mysqladmin ping -u root -p${MYSQL_ROOT_PASSWORD}"
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        storageClassName: rok
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: feast-mysql-svc
+  namespace: kubeflow
+spec:
+  type: ClusterIP
+  ports:
+  - name: mysql
+    port: 3306
+    targetPort: mysql
+  selector:
+    app: feast-mysql
