@@ -202,7 +202,7 @@ def test_invalid_project_name():
     _test_config(
         dedent(
             """
-        project: foo-1
+        project: foo+1
         registry: "registry.db"
         provider: local
         """

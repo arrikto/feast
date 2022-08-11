@@ -175,7 +175,7 @@ def _prepare_registry_and_repo(repo_config, repo_path):
     if not is_valid_name(project):
         print(
             f"{project} is not valid. Project name should only have "
-            f"alphanumerical values and underscores but not start with an underscore."
+            f"alphanumerical values, underscores and dashes but not start with an underscore."
         )
         sys.exit(1)
     registry = store.registry
@@ -316,7 +316,7 @@ def init_repo(repo_name: str, template: str):
 
     if not is_valid_name(repo_name):
         raise BadParameter(
-            message="Name should be alphanumeric values and underscores but not start with an underscore",
+            message="Name should be alphanumeric values, underscores and dashes but not start with an underscore",
             param_hint="PROJECT_DIRECTORY",
         )
     repo_path = Path(os.path.join(Path.cwd(), repo_name))
@@ -373,8 +373,10 @@ def init_repo(repo_name: str, template: str):
 
 
 def is_valid_name(name: str) -> bool:
-    """A name should be alphanumeric values and underscores but not start with an underscore"""
-    return not name.startswith("_") and re.compile(r"\W+").search(name) is None
+    """A name should be alphanumeric values, underscores and dashes but not start with an underscore"""
+    return (
+        not name.startswith("_") and re.compile(r"[^a-zA-Z0-9_-]+").search(name) is None
+    )
 
 
 def replace_str_in_file(file_path, match_str, sub_str):

@@ -237,6 +237,7 @@ def _initialize_conn(db_path: str):
 
 
 def _table_id(project: str, table: FeatureView) -> str:
+    project = project.replace("-", "_")
     return f"{project}_{table.name}"
 
 
