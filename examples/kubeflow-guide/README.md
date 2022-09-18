@@ -314,7 +314,7 @@ new Notebook Server by default.
 ---
 ## Part C: Demo
 
-![](demo-diagram.png)
+![](files/imgs/demo-diagram.png)
 ### Story
 This demo shows how data engineers can easily share features with data scientists.
 Then, data scientists can use these features to train a model and make real-time

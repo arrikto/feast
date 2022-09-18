@@ -12,7 +12,7 @@ contain one or more child roles forming essentially a tree.
 This is the typical Kubeflow user's namespace role hierarchy and service
 accounts:
 
-![](namespace-diagram.png)
+![](files/imgs/namespace-diagram.png)
 
 We can see that every user who owns a namespace has the `kubeflow-admin`
 role that contains the `kubeflow-edit` and `kubeflow-view` roles. Let's
@@ -21,7 +21,7 @@ of each namespace and how they are tied to the aforementioned roles.
 
 This is a part of the existing role hierarchy:
 
-![](role-hierarchy-old.png)
+![](files/imgs/role-hierarchy-old.png)
 
 The `kubeflow-edit` role contains multiple `*-edit` roles and the
 `kubeflow-view` role. The `kubeflow-view` role contains multiple `*-view`
@@ -35,7 +35,7 @@ Following the existing role hierarchy we add the following roles:
 - kubeflow-feature-view
 - aggregate-to-feature-view
 
-![](role-hierarchy.png)
+![](files/imgs/role-hierarchy.png)
 
 `kubeflow-feature-edit`: This is an intermediate ClusterRole which aggregates
 all the rules from child ClusterRoles e.g. `aggregate-to-feature-edit`. It

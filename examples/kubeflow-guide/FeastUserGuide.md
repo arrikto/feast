@@ -104,11 +104,11 @@ To set up the Feast Registry in Kubeflow follow parts A and B of the [Feast x Ku
 
 The following diagram shows how a typical machine learning workflow looks like. It is a process that starts with data engineering, continues with model training and ends with model deployment.
 
-![](workflow.png)
+![](files/imgs/workflow.png)
 
 A feature store like Feast, splits the above ML workflow into smaller independent workflows.
 
-![](workflow-split.png)
+![](files/imgs/workflow-split.png)
 
 Thus, Feast allows independent iteration on these smaller workflows making it easier for teams to focus on a specific part of the ML workflow and cooperate effectively. Data engineers focus on creating new features, data scientists build new models and DevOps engineers deploy the models in production.
 
@@ -120,7 +120,7 @@ Let’s now get some hands-on experience and prove how Feast can act as the glue
 
 After data engineers create new features and store them in the Offline Store, they can register them in the Registry using Python code. This way the features are discoverable and available to Feast clients that have the right permissions.
 
-Go through **data-workflow.ipynb** and run it as a pipeline using Kale to learn more.
+Go through **data-workflow.ipynb** in `files/notebooks` and run it as a pipeline using Kale to learn more.
 
 #### Continuous Feature Engineering
 
@@ -134,7 +134,7 @@ Try doing so by configuring a daily run of the **data-workflow** pipeline that y
 
 When training models we want to be able to control the datasets we use in an efficient way. We want to be able to consistently fetch features for reproducibility purposes and not have to worry about complex point-in-time joins. The Feast SDK offers the *get_historical_features()* method that does the work for you.
 
-Go through **model-workflow.ipynb** and run it as a pipeline using Kale to learn more.
+Go through **model-workflow.ipynb** in `files/notebooks` and run it as a pipeline using Kale to learn more.
 
 #### Continuous Model Training
 
@@ -148,7 +148,7 @@ Pay attention to the *START_DATE* and *END_DATE* variables we use to set this in
 
 After creating a model we want to deploy it in production and make sure it gets the latest feature data. We will use the Online Store to do so. More specifically, we spin up an inference service that uses a transformer to fetch the latest feature data and pass it to the model as input.
 
-Go through the **serve-workflow.ipynb** to find out more about model deployment with Feast.
+Go through the **serve-workflow.ipynb** in `files/notebooks` to find out more about model deployment with Feast.
 
 **Note**: The service account of the inference service must have “read” access to the required feature definitions. At the moment, the **default** service account is used and does **NOT** have permissions.
 
@@ -158,7 +158,7 @@ Go through the **serve-workflow.ipynb** to find out more about model deployment 
 
 Keeping features fresh is very important for a model’s success. For this reason, we need to keep the Online Store fresh. To do so, we use the materialization process (push latest feature data from Offline to Online Store).
 
-Go through the **materialization.ipynb** and run it as a pipeline using Kale to learn more. Set the pipeline as a **Recurring Run** to keep the features fresh based on your needs.
+Go through the **materialization.ipynb** in `files/notebooks` and run it as a pipeline using Kale to learn more. Set the pipeline as a **Recurring Run** to keep the features fresh based on your needs.
 
 **Latest News**: Feast supports the use of [batch materialization engines](https://docs.feast.dev/reference/batch-materialization) that keep the feature values fresh.
 
